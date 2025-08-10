@@ -47,6 +47,17 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-app.listen(3000, () => {
-  console.log('Servidor backend corriendo en http://localhost:3000');
+// Manejo de errores global
+app.use((err, req, res, next) => {
+  console.error('Error global:', err);
+  res.status(500).json({ error: 'Error interno del servidor', details: err.message });
 });
+
+const port = process.env.PORT || 3000;
+try {
+  app.listen(port, () => {
+    console.log(`Servidor backend corriendo en el puerto ${port}`);
+  });
+} catch (err) {
+  console.error('Error al iniciar el servidor:', err);
+}

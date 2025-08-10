@@ -54,14 +54,14 @@ router.post('/recover-password', async (req, res) => {
       const host = req.get('host');
       recoveryUrl = `${protocol}://${host}/reset-password?token=${recoveryToken}`;
     }
-    // Configura el transporter SMTP
+    // Configura el transporter SMTP usando variables de entorno
     const transporter = nodemailer.createTransport({
-      host: 'mail.fudys.app', // Host SMTP según tu registro MX/DNS
-      port: 587,
-      secure: false,
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT) || 587,
+      secure: parseInt(process.env.SMTP_PORT) === 465, // true para 465, false para otros
       auth: {
-        user: 'info@fudys.app',
-        pass: 'Jesusreyna96.'
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS
       },
       tls: {
         rejectUnauthorized: false // Ignorar error de certificado en pruebas
