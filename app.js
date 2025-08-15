@@ -87,6 +87,29 @@ app.get('/api/health/db-network', async (req, res) => {
   }
 });
 
+// Egress IP del servidor (para whitelisting en cPanel Remote MySQL)
+app.get('/api/health/egress-ip', async (req, res) => {
+  try {
+    const https = require('https');
+    https.get('https://api.ipify.org?format=json', (r) => {
+      let data = '';
+      r.on('data', (chunk) => (data += chunk));
+      r.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          res.json({ ok: true, ip: json.ip });
+        } catch (e) {
+          res.status(502).json({ ok: false, error: 'invalid ipify response' });
+        }
+      });
+    }).on('error', (err) => {
+      res.status(502).json({ ok: false, error: err.message });
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Endpoint para subir archivos (logo/banner)
 const upload = require('./upload');
 app.post('/api/upload', upload.single('file'), (req, res) => {
