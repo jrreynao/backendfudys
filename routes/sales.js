@@ -1,6 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const jwt = require('jsonwebtoken');
+const jwtSecret = require('../jwt_secret');
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader) return res.status(401).json({ error: 'Token requerido' });
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token inválido' });
+  try {
+    const decoded = jwt.verify(token, jwtSecret);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token inválido' });
+  }
+}
 
 // Obtener ventas por restaurante
 router.get('/:restaurantId', async (req, res) => {
@@ -119,3 +135,34 @@ router.get('/global/stats', async (req, res) => {
 });
 
 module.exports = router;
+
+// Pedidos recientes del usuario autenticado
+router.get('/recent', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Trae las últimas 10 ventas del usuario, con datos mínimos para la pantalla
+    const [rows] = await db.query(
+      `SELECT s.id, s.restaurant_id, r.name AS restaurant, s.created_at, 
+              (SELECT image_url FROM products p 
+               JOIN sale_items si ON si.product_id = p.id 
+               WHERE si.sale_id = s.id LIMIT 1) AS image
+       FROM sales s
+       JOIN restaurants r ON r.id = s.restaurant_id
+       WHERE s.user_id = ?
+       ORDER BY s.created_at DESC
+       LIMIT 10`,
+      [userId]
+    );
+    // Mapea a forma que el front espera (con subtitle opcional)
+    const result = rows.map(r => ({
+      id: r.id,
+      restaurant_id: r.restaurant_id,
+      restaurant: r.restaurant,
+      image: r.image || null,
+      subtitle: new Date(r.created_at).toISOString(),
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});

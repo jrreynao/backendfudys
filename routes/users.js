@@ -184,6 +184,28 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// Cambiar contraseña del usuario autenticado
+router.put('/profile/password', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) {
+      return res.status(400).json({ error: 'oldPassword y newPassword son requeridos' });
+    }
+    // Obtener hash actual
+    const [rows] = await db.query('SELECT password FROM users WHERE id = ?', [userId]);
+    if (!rows.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+    const currentHash = rows[0].password;
+    const valid = await bcrypt.compare(oldPassword, currentHash);
+    if (!valid) return res.status(401).json({ error: 'Contraseña actual incorrecta' });
+    const newHash = await bcrypt.hash(newPassword, 10);
+    await db.query('UPDATE users SET password = ? WHERE id = ?', [newHash, userId]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Obtener perfil del usuario autenticado
 router.get('/profile', authMiddleware, async (req, res) => {
   try {
