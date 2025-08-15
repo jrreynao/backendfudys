@@ -8,9 +8,6 @@ const useSocket = !!process.env.DB_SOCKET;
 const connectTimeout = process.env.DB_CONNECT_TIMEOUT_MS
   ? parseInt(process.env.DB_CONNECT_TIMEOUT_MS, 10)
   : 10000; // 10s por defecto
-const acquireTimeout = process.env.DB_ACQUIRE_TIMEOUT_MS
-  ? parseInt(process.env.DB_ACQUIRE_TIMEOUT_MS, 10)
-  : 10000; // 10s por defecto
 
 // SSL opcional (para proveedores que requieran TLS)
 let ssl;
@@ -30,7 +27,6 @@ const baseConfig = {
   connectionLimit: 10,
   queueLimit: 0,
   connectTimeout,
-  acquireTimeout,
 };
 
 const config = useSocket
@@ -54,7 +50,7 @@ if (ssl) {
 } else {
   console.log('[DB] SSL: disabled');
 }
-console.log('[DB] Timeouts ms -> connect:', connectTimeout, 'acquire:', acquireTimeout);
+console.log('[DB] Timeouts ms -> connect:', connectTimeout);
 
 const pool = mysql.createPool(config);
 module.exports = pool;
