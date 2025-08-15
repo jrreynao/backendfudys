@@ -34,6 +34,24 @@ app.use('/api/exchange-rates', exchangeRatesRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/cart', cartRouter);
 
+// Health checks (para probar CORS y disponibilidad sin tocar DB)
+app.options('*', cors());
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString() });
+});
+// Health DB: prueba rápida de conexión
+const db = require('./db');
+app.get('/api/health/db', async (req, res) => {
+  try {
+    const conn = await db.getConnection();
+    await conn.query('SELECT 1');
+    conn.release?.();
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // Endpoint para subir archivos (logo/banner)
 const upload = require('./upload');
 app.post('/api/upload', upload.single('file'), (req, res) => {
