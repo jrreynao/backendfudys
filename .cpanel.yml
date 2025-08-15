@@ -1,0 +1,12 @@
+---
+deployment:
+  tasks:
+    # Asegura entorno producción para instalar dependencias mínimas
+    - /bin/echo "[cPanel Deploy] Iniciando despliegue en $(/bin/pwd)"
+    - /bin/echo "[cPanel Deploy] NODE_ENV=production"
+    - /bin/mkdir -p tmp uploads
+    # Instala dependencias; usa ci si hay lockfile, si falla cae a install
+    - /bin/bash -lc 'if [ -f package-lock.json ]; then npm ci --omit=dev || npm ci; else npm install --production || npm install; fi'
+    # Reinicia la app Node (Phusion Passenger)
+    - /bin/touch tmp/restart.txt
+    - /bin/echo "[cPanel Deploy] Despliegue completado"
