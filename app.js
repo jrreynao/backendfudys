@@ -52,6 +52,41 @@ app.get('/api/health/db', async (req, res) => {
   }
 });
 
+// Chequeo de red a host/puerto de DB (sin abrir sesión MySQL) para diagnosticar ETIMEDOUT/ENOTFOUND
+app.get('/api/health/db-network', async (req, res) => {
+  const net = require('net');
+  const host = process.env.DB_SOCKET ? '(socket)' : (process.env.DB_HOST || 'localhost');
+  const port = process.env.DB_SOCKET ? 0 : (process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306);
+  if (process.env.DB_SOCKET) {
+    return res.json({ ok: true, mode: 'socket', socketPath: process.env.DB_SOCKET });
+  }
+  const start = Date.now();
+  const socket = new net.Socket();
+  let finished = false;
+  socket.setTimeout(5000);
+  socket.once('connect', () => {
+    finished = true;
+    socket.destroy();
+    res.json({ ok: true, host, port, rttMs: Date.now() - start });
+  });
+  socket.once('timeout', () => {
+    if (finished) return;
+    finished = true;
+    socket.destroy();
+    res.status(504).json({ ok: false, host, port, error: 'timeout', rttMs: Date.now() - start });
+  });
+  socket.once('error', (err) => {
+    if (finished) return;
+    finished = true;
+    res.status(502).json({ ok: false, host, port, error: err.code || err.message });
+  });
+  try {
+    socket.connect(port, host);
+  } catch (err) {
+    res.status(500).json({ ok: false, host, port, error: err.message });
+  }
+});
+
 // Endpoint para subir archivos (logo/banner)
 const upload = require('./upload');
 app.post('/api/upload', upload.single('file'), (req, res) => {
