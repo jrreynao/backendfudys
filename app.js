@@ -7,8 +7,10 @@ const app = express();
 
 // Permite servir la API bajo un subpath (por ejemplo, /apiv2)
 const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/$/, ''); // sin barra final
-const API_PREFIX = `${BASE_PATH}/api`;
-const UPLOADS_PREFIX = `${BASE_PATH}/uploads`;
+const API_PREFIXES = ['/api'];
+if (BASE_PATH && BASE_PATH !== '/') {
+  API_PREFIXES.push(`${BASE_PATH}/api`);
+}
 
 
 const restaurantsRouter = require('./routes/restaurants');
@@ -27,26 +29,28 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
-app.use(`${API_PREFIX}/restaurants`, restaurantsRouter);
-app.use(`${API_PREFIX}/products`, productsRouter);
-app.use(`${API_PREFIX}/users`, usersRouter);
-app.use(`${API_PREFIX}/sales`, salesRouter);
-app.use(`${API_PREFIX}/subscriptions`, subscriptionsRouter);
-app.use(`${API_PREFIX}/payment-methods`, paymentMethodsRouter); // Ruta correcta para payment methods
-app.use(`${API_PREFIX}/delivery-options`, deliveryOptionsRouter);
-app.use(`${API_PREFIX}/opening-hours`, openingHoursRouter);
-app.use(`${API_PREFIX}/exchange-rates`, exchangeRatesRouter);
-app.use(`${API_PREFIX}/auth`, authRouter);
-app.use(`${API_PREFIX}/cart`, cartRouter);
+for (const API_PREFIX of API_PREFIXES) {
+  app.use(`${API_PREFIX}/restaurants`, restaurantsRouter);
+  app.use(`${API_PREFIX}/products`, productsRouter);
+  app.use(`${API_PREFIX}/users`, usersRouter);
+  app.use(`${API_PREFIX}/sales`, salesRouter);
+  app.use(`${API_PREFIX}/subscriptions`, subscriptionsRouter);
+  app.use(`${API_PREFIX}/payment-methods`, paymentMethodsRouter); // Ruta correcta para payment methods
+  app.use(`${API_PREFIX}/delivery-options`, deliveryOptionsRouter);
+  app.use(`${API_PREFIX}/opening-hours`, openingHoursRouter);
+  app.use(`${API_PREFIX}/exchange-rates`, exchangeRatesRouter);
+  app.use(`${API_PREFIX}/auth`, authRouter);
+  app.use(`${API_PREFIX}/cart`, cartRouter);
+}
 
 // Health checks (para probar CORS y disponibilidad sin tocar DB)
 app.options('*', cors());
-app.get(`${API_PREFIX}/health`, (req, res) => {
+for (const API_PREFIX of API_PREFIXES) app.get(`${API_PREFIX}/health`, (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 // Health DB: prueba rápida de conexión
 const db = require('./db');
-app.get(`${API_PREFIX}/health/db`, async (req, res) => {
+for (const API_PREFIX of API_PREFIXES) app.get(`${API_PREFIX}/health/db`, async (req, res) => {
   try {
     const conn = await db.getConnection();
     await conn.query('SELECT 1');
@@ -58,7 +62,7 @@ app.get(`${API_PREFIX}/health/db`, async (req, res) => {
 });
 
 // Chequeo de red a host/puerto de DB (sin abrir sesión MySQL) para diagnosticar ETIMEDOUT/ENOTFOUND
-app.get(`${API_PREFIX}/health/db-network`, async (req, res) => {
+for (const API_PREFIX of API_PREFIXES) app.get(`${API_PREFIX}/health/db-network`, async (req, res) => {
   const net = require('net');
   const host = process.env.DB_SOCKET ? '(socket)' : (process.env.DB_HOST || 'localhost');
   const port = process.env.DB_SOCKET ? 0 : (process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306);
@@ -93,7 +97,7 @@ app.get(`${API_PREFIX}/health/db-network`, async (req, res) => {
 });
 
 // Egress IP del servidor (para whitelisting en cPanel Remote MySQL)
-app.get(`${API_PREFIX}/health/egress-ip`, async (req, res) => {
+for (const API_PREFIX of API_PREFIXES) app.get(`${API_PREFIX}/health/egress-ip`, async (req, res) => {
   try {
     const https = require('https');
     https.get('https://api.ipify.org?format=json', (r) => {
@@ -117,7 +121,7 @@ app.get(`${API_PREFIX}/health/egress-ip`, async (req, res) => {
 
 // Endpoint para subir archivos (logo/banner)
 const upload = require('./upload');
-app.post(`${API_PREFIX}/upload`, upload.single('file'), (req, res) => {
+for (const API_PREFIX of API_PREFIXES) app.post(`${API_PREFIX}/upload`, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ningún archivo' });
   }
@@ -126,7 +130,11 @@ app.post(`${API_PREFIX}/upload`, upload.single('file'), (req, res) => {
   res.json({ url: fileUrl });
 });
 
-app.use(UPLOADS_PREFIX, express.static(path.join(__dirname, 'uploads')));
+// Servir uploads en ambos prefijos
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+if (BASE_PATH && BASE_PATH !== '/') {
+  app.use(`${BASE_PATH}/uploads`, express.static(path.join(__dirname, 'uploads')));
+}
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
