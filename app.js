@@ -5,6 +5,11 @@ const cors = require('cors');
 const path = require('path');
 const app = express();
 
+// Permite servir la API bajo un subpath (por ejemplo, /apiv2)
+const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/$/, ''); // sin barra final
+const API_PREFIX = `${BASE_PATH}/api`;
+const UPLOADS_PREFIX = `${BASE_PATH}/uploads`;
+
 
 const restaurantsRouter = require('./routes/restaurants');
 const productsRouter = require('./routes/products');
@@ -22,26 +27,26 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
-app.use('/api/restaurants', restaurantsRouter);
-app.use('/api/products', productsRouter);
-app.use('/api/users', usersRouter);
-app.use('/api/sales', salesRouter);
-app.use('/api/subscriptions', subscriptionsRouter);
-app.use('/api/payment-methods', paymentMethodsRouter); // Ruta correcta para payment methods
-app.use('/api/delivery-options', deliveryOptionsRouter);
-app.use('/api/opening-hours', openingHoursRouter);
-app.use('/api/exchange-rates', exchangeRatesRouter);
-app.use('/api/auth', authRouter);
-app.use('/api/cart', cartRouter);
+app.use(`${API_PREFIX}/restaurants`, restaurantsRouter);
+app.use(`${API_PREFIX}/products`, productsRouter);
+app.use(`${API_PREFIX}/users`, usersRouter);
+app.use(`${API_PREFIX}/sales`, salesRouter);
+app.use(`${API_PREFIX}/subscriptions`, subscriptionsRouter);
+app.use(`${API_PREFIX}/payment-methods`, paymentMethodsRouter); // Ruta correcta para payment methods
+app.use(`${API_PREFIX}/delivery-options`, deliveryOptionsRouter);
+app.use(`${API_PREFIX}/opening-hours`, openingHoursRouter);
+app.use(`${API_PREFIX}/exchange-rates`, exchangeRatesRouter);
+app.use(`${API_PREFIX}/auth`, authRouter);
+app.use(`${API_PREFIX}/cart`, cartRouter);
 
 // Health checks (para probar CORS y disponibilidad sin tocar DB)
 app.options('*', cors());
-app.get('/api/health', (req, res) => {
+app.get(`${API_PREFIX}/health`, (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 // Health DB: prueba rápida de conexión
 const db = require('./db');
-app.get('/api/health/db', async (req, res) => {
+app.get(`${API_PREFIX}/health/db`, async (req, res) => {
   try {
     const conn = await db.getConnection();
     await conn.query('SELECT 1');
@@ -53,7 +58,7 @@ app.get('/api/health/db', async (req, res) => {
 });
 
 // Chequeo de red a host/puerto de DB (sin abrir sesión MySQL) para diagnosticar ETIMEDOUT/ENOTFOUND
-app.get('/api/health/db-network', async (req, res) => {
+app.get(`${API_PREFIX}/health/db-network`, async (req, res) => {
   const net = require('net');
   const host = process.env.DB_SOCKET ? '(socket)' : (process.env.DB_HOST || 'localhost');
   const port = process.env.DB_SOCKET ? 0 : (process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306);
@@ -88,7 +93,7 @@ app.get('/api/health/db-network', async (req, res) => {
 });
 
 // Egress IP del servidor (para whitelisting en cPanel Remote MySQL)
-app.get('/api/health/egress-ip', async (req, res) => {
+app.get(`${API_PREFIX}/health/egress-ip`, async (req, res) => {
   try {
     const https = require('https');
     https.get('https://api.ipify.org?format=json', (r) => {
@@ -112,7 +117,7 @@ app.get('/api/health/egress-ip', async (req, res) => {
 
 // Endpoint para subir archivos (logo/banner)
 const upload = require('./upload');
-app.post('/api/upload', upload.single('file'), (req, res) => {
+app.post(`${API_PREFIX}/upload`, upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se subió ningún archivo' });
   }
@@ -121,7 +126,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   res.json({ url: fileUrl });
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(UPLOADS_PREFIX, express.static(path.join(__dirname, 'uploads')));
 
 // Manejo de errores global
 app.use((err, req, res, next) => {
