@@ -31,11 +31,11 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Activar/desactivar opción de entrega
-router.put('/:id', async (req, res) => {
+// Activar/desactivar opción de entrega por ID explícito (evita conflicto con PUT /:restaurantId)
+router.put('/id/:id', async (req, res) => {
   const { is_active } = req.body;
   try {
-    await db.query('UPDATE delivery_options SET is_active=? WHERE id=?', [is_active, req.params.id]);
+  await db.query('UPDATE delivery_options SET is_active=? WHERE id=?', [is_active, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
