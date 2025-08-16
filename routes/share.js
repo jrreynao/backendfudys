@@ -43,6 +43,14 @@ function renderOgHtml({ title, description, imageUrl, url }) {
 </html>`;
 }
 
+// Share page (homepage): /share -> default OG and redirect to '/'
+router.get('/', async (req, res) => {
+  const url = absUrl(req, '/');
+  const imageUrl = absUrl(req, '/icons/Icon-512.png');
+  const html = renderOgHtml({ title: 'fudys', description: 'tus tiendas favoritas en un solo lugar', imageUrl, url });
+  res.set('Content-Type', 'text/html; charset=utf-8').send(html);
+});
+
 // Share page: /share/:customUrl -> returns OG meta for the store and redirects to /:customUrl
 router.get('/:customUrl', async (req, res) => {
   const { customUrl } = req.params;
