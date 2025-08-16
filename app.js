@@ -28,6 +28,7 @@ const deliveryOptionsRouter = require('./routes/delivery_options');
 const openingHoursRouter = require('./routes/opening_hours');
 const exchangeRatesRouter = require('./routes/exchange_rates');
 const shareRouter = require('./routes/share');
+const analyticsRouter = require('./routes/analytics');
 
 app.use(cors({
   origin: '*',
@@ -46,6 +47,7 @@ for (const API_PREFIX of API_PREFIXES) {
   app.use(`${API_PREFIX}/delivery-options`, deliveryOptionsRouter);
   app.use(`${API_PREFIX}/opening-hours`, openingHoursRouter);
   app.use(`${API_PREFIX}/exchange-rates`, exchangeRatesRouter);
+  app.use(`${API_PREFIX}/analytics`, analyticsRouter);
   app.use(`${API_PREFIX}/auth`, authRouter);
   app.use(`${API_PREFIX}/cart`, cartRouter);
 }
