@@ -127,7 +127,10 @@ for (const API_PREFIX of API_PREFIXES) app.post(`${API_PREFIX}/upload`, upload.s
   }
   // Construye la URL pública del archivo
   const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({ url: fileUrl });
+  // Variante que pasa por el prefijo /api para asegurar cabeceras CORS cuando solo se proxyan rutas /api/*
+  const apiUploadsPrefix = (BASE_PATH && BASE_PATH !== '/') ? `${BASE_PATH}/api/uploads` : `/api/uploads`;
+  const apiUrl = `${apiUploadsPrefix}/${req.file.filename}`;
+  res.json({ url: fileUrl, apiUrl });
 });
 
 // Servir uploads en ambos prefijos con CORS explícito para imágenes
@@ -144,6 +147,13 @@ const uploadsCors = (req, res, next) => {
 app.use('/uploads', uploadsCors, express.static(uploadsDir));
 if (BASE_PATH && BASE_PATH !== '/') {
   app.use(`${BASE_PATH}/uploads`, uploadsCors, express.static(uploadsDir));
+}
+
+// También servir uploads bajo el prefijo /api para entornos donde solo se reenvía BASE_PATH/api/* al Node (cPanel/Proxy)
+if (BASE_PATH && BASE_PATH !== '/') {
+  app.use(`${BASE_PATH}/api/uploads`, uploadsCors, express.static(uploadsDir));
+} else {
+  app.use(`/api/uploads`, uploadsCors, express.static(uploadsDir));
 }
 
 // Manejo de errores global
