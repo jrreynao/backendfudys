@@ -130,10 +130,20 @@ for (const API_PREFIX of API_PREFIXES) app.post(`${API_PREFIX}/upload`, upload.s
   res.json({ url: fileUrl });
 });
 
-// Servir uploads en ambos prefijos
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Servir uploads en ambos prefijos con CORS explícito para imágenes
+const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsCors = (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Permite que navegadores consuman imágenes sin bloquear por CORP
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+};
+app.use('/uploads', uploadsCors, express.static(uploadsDir));
 if (BASE_PATH && BASE_PATH !== '/') {
-  app.use(`${BASE_PATH}/uploads`, express.static(path.join(__dirname, 'uploads')));
+  app.use(`${BASE_PATH}/uploads`, uploadsCors, express.static(uploadsDir));
 }
 
 // Manejo de errores global
