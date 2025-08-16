@@ -1,5 +1,21 @@
 node_modules/
+
+# Environment
 .env
-.DS_Store
-npm-debug.log
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.log
+
+# Runtime/uploads
 uploads/
+backend.zip
+
+# OS/Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
