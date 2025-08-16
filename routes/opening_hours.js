@@ -2,10 +2,47 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 
+// Helpers de normalización compartidos
+const dayMap = {
+  1: 'monday',
+  2: 'tuesday',
+  3: 'wednesday',
+  4: 'thursday',
+  5: 'friday',
+  6: 'saturday',
+  7: 'sunday',
+};
+const normalizeDay = (v) => {
+  if (v === null || v === undefined) return null;
+  if (typeof v === 'number') return dayMap[v] || null;
+  const s = String(v).trim().toLowerCase();
+  const n = parseInt(s, 10);
+  if (!isNaN(n) && dayMap[n]) return dayMap[n];
+  if (['monday','tuesday','wednesday','thursday','friday','saturday','sunday'].includes(s)) return s;
+  return null;
+};
+const normalizeTime = (t) => {
+  if (!t) return null;
+  let s = String(t).trim();
+  if (/^\d{1,2}:\d{2}$/.test(s)) return s + ':00';
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(s)) return s;
+  const parts = s.split(':');
+  if (parts.length >= 2) {
+    const hh = parts[0].padStart(2, '0');
+    const mm = parts[1].padStart(2, '0');
+    return `${hh}:${mm}:00`;
+  }
+  return null;
+};
+
 // Obtener horarios por restaurante
 router.get('/:restaurantId', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM opening_hours WHERE restaurant_id = ?', [req.params.restaurantId]);
+    // Orden consistente Lunes..Domingo
+    const [rows] = await db.query(
+      "SELECT * FROM opening_hours WHERE restaurant_id = ? ORDER BY FIELD(day_of_week,'monday','tuesday','wednesday','thursday','friday','saturday','sunday')",
+      [req.params.restaurantId]
+    );
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -16,14 +53,23 @@ router.get('/:restaurantId', async (req, res) => {
 router.post('/', async (req, res) => {
   const { restaurant_id, day_of_week, open_time, close_time } = req.body;
   try {
-    const [result] = await db.query('INSERT INTO opening_hours (restaurant_id, day_of_week, open_time, close_time) VALUES (?, ?, ?, ?)', [restaurant_id, day_of_week, open_time, close_time]);
+    const day = normalizeDay(day_of_week);
+    const open = normalizeTime(open_time);
+    const close = normalizeTime(close_time);
+    if (!restaurant_id || !day || !open || !close) {
+      return res.status(400).json({ error: 'Datos inválidos para horario (restaurant_id, day_of_week, open_time, close_time)' });
+    }
+    // Evitar duplicados por día: borrar el existente y luego insertar
+    await db.query('DELETE FROM opening_hours WHERE restaurant_id = ? AND day_of_week = ?', [restaurant_id, day]);
+    const [result] = await db.query(
+      'INSERT INTO opening_hours (restaurant_id, day_of_week, open_time, close_time) VALUES (?, ?, ?, ?)',
+      [restaurant_id, day, open, close]
+    );
     res.json({ id: result.insertId });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
-
-module.exports = router;
 
 // Actualizar todos los horarios de un restaurante
 router.put('/:restaurantId', async (req, res) => {
@@ -96,3 +142,5 @@ router.put('/:restaurantId', async (req, res) => {
     conn.release();
   }
 });
+
+module.exports = router;
