@@ -134,7 +134,10 @@ for (const API_PREFIX of API_PREFIXES) app.post(`${API_PREFIX}/upload`, upload.s
 });
 
 // Servir uploads en ambos prefijos con CORS explícito para imágenes
-const uploadsDir = path.join(__dirname, 'uploads');
+// Permite sobreescribir la carpeta con UPLOADS_DIR para apuntar a un directorio absoluto del servidor (ej: /home/user/public_html/apiv2/uploads)
+const uploadsDir = process.env.UPLOADS_DIR && process.env.UPLOADS_DIR.trim()
+  ? process.env.UPLOADS_DIR.trim()
+  : path.join(__dirname, 'uploads');
 const uploadsCors = (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
