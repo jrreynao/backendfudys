@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
     const [restaurants] = await db.query('SELECT * FROM restaurants');
     // Para cada restaurante, obtener sus productos y su suscripción activa
     for (const r of restaurants) {
-      const [products] = await db.query('SELECT * FROM products WHERE restaurant_id = ?', [r.id]);
+      const [products] = await db.query('SELECT * FROM products WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC', [r.id]);
       r.products = products;
       // Obtener la suscripción activa (la más reciente y activa)
       const [subs] = await db.query('SELECT * FROM subscriptions WHERE restaurant_id = ? AND is_active = 1 ORDER BY end_date DESC LIMIT 1', [r.id]);
@@ -182,9 +182,9 @@ router.get('/custom/:customUrl', async (req, res) => {
     if (restaurants.length === 0) {
       return res.status(404).json({ error: 'No encontrado' });
     }
-    const r = restaurants[0];
-    // Obtener productos
-    const [products] = await db.query('SELECT * FROM products WHERE restaurant_id = ?', [r.id]);
+  const r = restaurants[0];
+  // Obtener productos
+  const [products] = await db.query('SELECT * FROM products WHERE restaurant_id = ? ORDER BY display_order ASC, id ASC', [r.id]);
     r.products = products;
     // Obtener suscripción activa
     const [subs] = await db.query('SELECT * FROM subscriptions WHERE restaurant_id = ? AND is_active = 1 ORDER BY end_date DESC LIMIT 1', [r.id]);
