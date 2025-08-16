@@ -52,8 +52,10 @@ for (const API_PREFIX of API_PREFIXES) {
 
 // Share routes (HTML with Open Graph for social previews). Mount at root and BASE_PATH for flexibility.
 app.use('/share', shareRouter);
+app.use('/s', shareRouter); // short alias
 if (BASE_PATH && BASE_PATH !== '/') {
   app.use(`${BASE_PATH}/share`, shareRouter);
+  app.use(`${BASE_PATH}/s`, shareRouter);
 }
 
 // Health checks (para probar CORS y disponibilidad sin tocar DB)
