@@ -6,7 +6,12 @@ const path = require('path');
 const app = express();
 
 // Permite servir la API bajo un subpath (por ejemplo, /apiv2)
-const BASE_PATH = (process.env.BASE_PATH || '').replace(/\/$/, ''); // sin barra final
+let __rawBase = process.env.BASE_PATH || '';
+// Si accidentalmente se pasa una URL completa, extrae solo el pathname
+if (/^https?:\/\//i.test(__rawBase)) {
+  try { __rawBase = new URL(__rawBase).pathname || ''; } catch {}
+}
+const BASE_PATH = (__rawBase || '').replace(/\/$/, ''); // sin barra final
 const API_PREFIXES = ['/api'];
 if (BASE_PATH && BASE_PATH !== '/') {
   API_PREFIXES.push(`${BASE_PATH}/api`);
@@ -22,6 +27,7 @@ const paymentMethodsRouter = require('./routes/payment_methods');
 const deliveryOptionsRouter = require('./routes/delivery_options');
 const openingHoursRouter = require('./routes/opening_hours');
 const exchangeRatesRouter = require('./routes/exchange_rates');
+const shareRouter = require('./routes/share');
 
 app.use(cors({
   origin: '*',
@@ -29,6 +35,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+console.log('BASE_PATH:', JSON.stringify(BASE_PATH), 'API_PREFIXES:', API_PREFIXES);
 for (const API_PREFIX of API_PREFIXES) {
   app.use(`${API_PREFIX}/restaurants`, restaurantsRouter);
   app.use(`${API_PREFIX}/products`, productsRouter);
@@ -41,6 +48,12 @@ for (const API_PREFIX of API_PREFIXES) {
   app.use(`${API_PREFIX}/exchange-rates`, exchangeRatesRouter);
   app.use(`${API_PREFIX}/auth`, authRouter);
   app.use(`${API_PREFIX}/cart`, cartRouter);
+}
+
+// Share routes (HTML with Open Graph for social previews). Mount at root and BASE_PATH for flexibility.
+app.use('/share', shareRouter);
+if (BASE_PATH && BASE_PATH !== '/') {
+  app.use(`${BASE_PATH}/share`, shareRouter);
 }
 
 // Health checks (para probar CORS y disponibilidad sin tocar DB)
