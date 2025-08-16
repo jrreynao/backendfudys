@@ -16,7 +16,17 @@ router.get('/:restaurantId', async (req, res) => {
 router.post('/', async (req, res) => {
   const { restaurant_id, name, description, price_usd, image_url } = req.body;
   try {
-    const [result] = await db.query('INSERT INTO products (restaurant_id, name, description, price_usd, image_url) VALUES (?, ?, ?, ?, ?)', [restaurant_id, name, description, price_usd, image_url]);
+    let price = price_usd;
+    if (typeof price === 'string') {
+      // Permite formatos "12,50" o con símbolos, deja solo dígitos, coma y punto
+      price = price.trim().replace(/[^0-9,\.\-]/g, '').replace(/,/g, '.');
+      price = parseFloat(price);
+    }
+    if (typeof price !== 'number' || Number.isNaN(price)) price = 0;
+    const [result] = await db.query(
+      'INSERT INTO products (restaurant_id, name, description, price_usd, image_url) VALUES (?, ?, ?, ?, ?)'
+      , [restaurant_id, name, description, price, image_url]
+    );
     res.json({ id: result.insertId });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -27,7 +37,13 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const { name, description, price_usd, image_url } = req.body;
   try {
-    await db.query('UPDATE products SET name=?, description=?, price_usd=?, image_url=? WHERE id=?', [name, description, price_usd, image_url, req.params.id]);
+    let price = price_usd;
+    if (typeof price === 'string') {
+      price = price.trim().replace(/[^0-9,\.\-]/g, '').replace(/,/g, '.');
+      price = parseFloat(price);
+    }
+    if (typeof price !== 'number' || Number.isNaN(price)) price = 0;
+    await db.query('UPDATE products SET name=?, description=?, price_usd=?, image_url=? WHERE id=?', [name, description, price, image_url, req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
